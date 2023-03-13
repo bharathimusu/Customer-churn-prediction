@@ -1,0 +1,160 @@
+import pandas as pd
+from matplotlib import pyplot as plt
+import seaborn as sns
+import tensorflow as tf
+from tensorflow import keras
+df = pd.read_csv("/content/data.csv.csv")
+df.sample(5)
+#Checking for datatypes
+#Wesee that Total charges is an object. We need to change that to float
+df.dtypes
+df.TotalCharges.values
+df['TotalCharges'] = df['TotalCharges'].replace(" ", 0).astype('float64')
+df.dtypes
+tenure_churn_no = df[df.Churn=='No'].tenure
+tenure_churn_yes = df[df.Churn=='Yes'].tenure
+plt.xlabel("tenure")
+plt.ylabel("Number Of Customers")
+plt.title("Customer Churn Prediction Visualization")
+blood_sugar_men = [113, 85, 90, 150, 149, 88, 93, 115, 135, 80, 77, 82, 129]
+blood_sugar_women = [67, 98, 89, 120, 133, 150, 84, 69, 89, 79, 120, 112, 100]
+plt.hist([tenure_churn_yes, tenure_churn_no], rwidth=0.95, color=['green','red'],lab
+el=['Churn=Yes','Churn=No'])
+plt.legend()
+#In this graph, we have the number of customers who will be leaving and not leavin
+g the company, and we have the tenure of months that they have been apart of t
+ax = sns.catplot(y="Churn", kind="count", data=df, height=2.6, aspect=2.5, orient='
+h')
+def kdeplot(feature):
+ plt.figure(figsize=(9, 4))
+ plt.title("KDE for {}".format(feature))
+ ax0 = sns.kdeplot(df[df['Churn'] == 'No'][feature].dropna(), color= 'navy', label= '
+Churn: No')
+ ax1 = sns.kdeplot(df[df['Churn'] == 'Yes'][feature].dropna(), color= 'orange', labe
+l= 'Churn: Yes')
+kdeplot('tenure')
+kdeplot('MonthlyCharges')
+kdeplot('TotalCharges')
+def barplot_percentages(feature, orient='v', axis_name="percentage of customers"):
+ ratios = pd.DataFrame()
+ g = df.groupby(feature)["Churn"].value_counts().to_frame()
+ g = g.rename({"Churn": axis_name}, axis=1).reset_index()
+ g[axis_name] = g[axis_name]/len(df)
+ if orient == 'v':
+ ax = sns.barplot(x=feature, y= axis_name, hue='Churn', data=g, orient=orient)
+ ax.set_yticklabels(['{:,.0%}'.format(y) for y in ax.get_yticks()])
+ else:
+ ax = sns.barplot(x= axis_name, y=feature, hue='Churn', data=g, orient=orient)
+ ax.set_xticklabels(['{:,.0%}'.format(x) for x in ax.get_xticks()])
+ ax.plot()
+barplot_percentages("SeniorCitizen")
+df['churn_rate'] = df['Churn'].replace("No", 0).replace("Yes", 1)
+g = sns.FacetGrid(df, col="SeniorCitizen", height=4, aspect=.9)
+ax = g.map(sns.barplot, "gender", "churn_rate", palette = "Blues_d", order= ['Femal
+e', 'Male'])
+plt.figure(figsize=(9, 4.5))
+barplot_percentages("MultipleLines", orient='h')
+plt.figure(figsize=(9, 4.5))
+barplot_percentages("InternetService", orient="h")
+#There are six additional services for customers with internet:
+cols = ["OnlineSecurity", "OnlineBackup", "DeviceProtection", "TechSupport", "St
+reamingTV", "StreamingMovies"]
+df1 = pd.melt(df[df["InternetService"] != "No"][cols]).rename({'value': 'Has service
+'}, axis=1)
+plt.figure(figsize=(10, 4.5))
+ax = sns.countplot(data=df1, x='variable', hue='Has service')
+ax.set(xlabel='Additional service', ylabel='Num of customers')
+plt.show()
+plt.figure(figsize=(10, 4.5))
+df1 = df[(df.InternetService != "No") & (df.Churn == "Yes")]
+df1 = pd.melt(df1[cols]).rename({'value': 'Has service'}, axis=1)
+ax = sns.countplot(data=df1, x='variable', hue='Has service', hue_order=['No', 'Yes']
+)
+ax.set(xlabel='Additional service', ylabel='Num of churns')
+plt.show()
+g = sns.FacetGrid(df, col="PaperlessBilling", height=4, aspect=.9)
+ax = g.map(sns.barplot, "Contract", "churn_rate", palette = "Blues_d", order= ['Mon
+th-to-month', 'One year', 'Two year'])
+plt.figure(figsize=(9, 4.5))
+barplot_percentages("PaymentMethod", orient='h')
+plt.figure(figsize=(12, 6))
+df.drop(['customerID', 'churn_rate'],
+ axis=1, inplace=True)
+corr = df.apply(lambda x: pd.factorize(x)[0]).corr()
+ax = sns.heatmap(corr, xticklabels=corr.columns, yticklabels=corr.columns,
+ linewidths=.2, cmap="YlGnBu")
+#Let's print unique values in object columns to see data values
+def print_unique_col_values(df):
+ for column in df:
+ if df[column].dtypes=='object':
+ print(f'{column}: {df[column].unique()}')
+print_unique_col_values(df)
+#Some of the columns have no internet service or no phone service, that can be repl
+aced with a simple No
+df.replace('No internet service','No',inplace=True)
+df.replace('No phone service','No',inplace=True)
+print_unique_col_values(df)
+#Here, converting Yes= 1, No =0
+yes_no_columns = ['Partner','Dependents','PhoneService','MultipleLines','OnlineSec
+urity','OnlineBackup',
+ 'DeviceProtection','TechSupport','StreamingTV','StreamingMovies','Pap
+erlessBilling','Churn']
+for col in yes_no_columns:
+ df[col].replace({'Yes': 1,'No': 0},inplace=True)
+for col in df:
+ print(f'{col}: {df[col].unique()}')
+df['gender'].replace({'Female':1,'Male':0},inplace=True)
+df.gender.unique()
+df1 = pd.get_dummies(data=df, columns=['InternetService','Contract','PaymentMet
+hod'])
+df1.columns
+df1.sample(5)
+df1.dtypes
+cols_to_scale = ['tenure','MonthlyCharges','TotalCharges']
+from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler()
+df1[cols_to_scale] = scaler.fit_transform(df1[cols_to_scale])
+for col in df1:
+ print(f'{col}: {df1[col].unique()}')
+X = df1.drop('Churn',axis='columns')
+y = df1['Churn']
+from sklearn.model_selection import train_test_splitX_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.2,random_state=5
+)
+x_train.shape
+X_test.shape
+X_train[:10]
+len(X_train.columns)
+model = keras.Sequential([
+ keras.layers.Dense(26, input_shape=(27,), activation='relu'),
+ keras.layers.Dense(15, activation='relu'),
+ keras.layers.Dense(1, activation='sigmoid')
+])
+# opt = keras.optimizers.Adam(learning_rate=0.01)
+model.compile(optimizer='adam',
+ loss='binary_crossentropy',
+ metrics=['accuracy'])
+model.fit(X_train, y_train , epochs=100)
+model.evaluate(X_test, y_test)
+yp = model.predict(X_test)
+yp[:5]
+y_pred = []
+for element in yp:
+ if element > 0.5:
+ y_pred.append(1)
+ else:
+ y_pred.append(0)
+y_pred[:10]
+y_test[:10]
+from sklearn.metrics import confusion_matrix , classification_report
+print(classification_report(y_test,y_pred))
+cm = tf.math.confusion_matrix(labels=y_test,predictions=y_pred)
+plt.figure(figsize = (10,7))
+sns.heatmap(cm, annot=True, fmt='d')
+plt.xlabel('Predicted')
+plt.ylabel('Truth')
+y_test.shape
+round((862+229)/(862+229+137+179),2)
+round(862/(862+179),2)
+round(229/(229+137),2)
+round(862/(862+137),2)
+round(229/(229+179),2)
